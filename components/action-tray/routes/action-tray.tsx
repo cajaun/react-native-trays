@@ -3,8 +3,8 @@ import { View, Text, Pressable } from "react-native";
 import { MaterialCommunityIcons, Octicons } from "@expo/vector-icons";
 
 import { PressableScale } from "@/components/ui/utils/pressable-scale";
-import Header from "@/components/action-tray/content/header";
-import { useActionTray } from "@/components/action-tray/context/action-tray-context";
+import Header from "../content/header";
+import { useActionTray } from "../context/action-tray-context";
 
 export const Palette = {
   primary: "#4290F6",
