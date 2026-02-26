@@ -39,15 +39,15 @@ export const TrayProvider: React.FC<Props> = ({ children }) => {
     return trayRef.current?.isActive?.() ?? false;
   }, []);
 
-  const builtContent = useMemo(
-    () => (
-      <>
-        {header}
-        {content}
-      </>
-    ),
-    [header, content],
-  );
+const builtContent = useMemo(
+  () => (
+    <React.Fragment key={`tray-step-${index}`}>
+      {header}
+      {content}
+    </React.Fragment>
+  ),
+  [header, content, index],
+);
 
   const ctxValue = useMemo(
     () => ({
