@@ -23,7 +23,7 @@ type Props = {
   step: number;
   totalSteps: number;
   onNext: () => void;
-  onFinish: () => void;
+  onFinish?: () => void;
   onSecondaryPress?: () => void;
 };
 
@@ -70,8 +70,8 @@ export const AnimatedOnboardingButton: React.FC<Props> = ({
  const handlePrimaryPress = async () => {
     await Haptics.selectionAsync();
 
-    if (isLastStep) onFinish();
-    else onNext();
+    // if (isLastStep) onFinish();
+    onNext();
   };
 
   const handleSecondaryPress = async () => {
