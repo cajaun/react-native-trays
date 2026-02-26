@@ -11,7 +11,11 @@ import {
   ViewStyle,
   LayoutChangeEvent,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import {
+  Gesture,
+  GestureDetector,
+  ScrollView,
+} from "react-native-gesture-handler";
 import Animated, {
   Easing,
   LinearTransition,
@@ -20,8 +24,9 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import { useAnimatedKeyboard } from "react-native-reanimated";
 import { Backdrop } from "./backdrop";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -35,7 +40,7 @@ import {
 type ActionTrayProps = {
   style?: StyleProp<ViewStyle>;
   onClose?: () => void;
-
+  index?: number;
   content?: React.ReactNode;
   footer?: React.ReactNode;
 };
@@ -47,14 +52,14 @@ export type ActionTrayRef = {
 };
 
 const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
-  ({ style, onClose, content, footer }, ref) => {
+  ({ style, onClose, content, footer, index }, ref) => {
     const translateY = useSharedValue(SCREEN_HEIGHT);
     const contentHeight = useSharedValue(0);
     const footerHeight = useSharedValue(0);
     const active = useSharedValue(false);
     const isClosing = useSharedValue(false);
     const context = useSharedValue({ y: 0 });
-
+    const keyboard = useAnimatedKeyboard();
     const [layoutEnabled, setLayoutEnabled] = useState(false);
     const [isClosingJS, setIsClosingJS] = useState(false);
 
@@ -104,7 +109,7 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
           isClosing.value = false;
           runOnJS(setIsClosingJS)(false);
 
-          runOnJS(Haptics.selectionAsync)();
+          // runOnJS(Haptics.selectionAsync)();
           scrollTo(0);
         },
         close,
@@ -137,12 +142,30 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
         }
       });
 
-    const rTrayStyle = useAnimatedStyle(() => ({
+    const keyboardOffset = useDerivedValue(() => {
+      return keyboard.height.value;
+    });
+    const rTrayStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          {
+            translateY: translateY.value - keyboardOffset.value,
+          },
+        ],
+      };
+    });
+    const rFooterSpacerStyle = useAnimatedStyle(() => {
+      return {
+        height: footer ? footerHeight.value : 0,
+      };
+    });
+
+    const rDragStyle = useAnimatedStyle(() => ({
       transform: [{ translateY: translateY.value }],
     }));
 
-    const rFooterSpacerStyle = useAnimatedStyle(() => ({
-      height: footer ? footerHeight.value : 0,
+    const rKeyboardStyle = useAnimatedStyle(() => ({
+      transform: [{ translateY: -keyboardOffset.value }],
     }));
 
     const handleLayout = (e: LayoutChangeEvent) => {
@@ -166,32 +189,35 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
           progress={progress}
         />
 
-        <GestureDetector gesture={gesture}>
-          <Animated.View
-            style={[styles.container, { bottom }, rTrayStyle, style]}
-            layout={
-              shouldUseLayoutAnimation ? layoutAnimationConfig : undefined
-            }
-            onLayout={handleLayout}
-          >
-            <Animated.View style={styles.content}>
-              <Animated.View>{content}</Animated.View>
-
-              <Animated.View style={rFooterSpacerStyle} />
+        <Animated.View style={rKeyboardStyle}>
+          <GestureDetector gesture={gesture}>
+            <Animated.View
+              style={[styles.container, { bottom }, rDragStyle, style]}
+              layout={
+                shouldUseLayoutAnimation ? layoutAnimationConfig : undefined
+              }
+              onLayout={handleLayout}
+            >
+              <Animated.View style={styles.content}>
+                <Animated.View key={`step-${index}`}>{content}</Animated.View>
+                <Animated.View style={rFooterSpacerStyle} />
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
-        </GestureDetector>
+          </GestureDetector>
+        </Animated.View>
 
         {footer && (
-          <Animated.View
-            onLayout={handleFooterLayout}
-            style={[
-              styles.footer,
-              { bottom, left: HORIZONTAL_MARGIN, right: HORIZONTAL_MARGIN },
-              rTrayStyle,
-            ]}
-          >
-            {footer}
+          <Animated.View style={rKeyboardStyle}>
+            <Animated.View
+              onLayout={handleFooterLayout}
+              style={[
+                styles.footer,
+                { bottom, left: HORIZONTAL_MARGIN, right: HORIZONTAL_MARGIN },
+                rDragStyle,
+              ]}
+            >
+              {footer}
+            </Animated.View>
           </Animated.View>
         )}
       </>

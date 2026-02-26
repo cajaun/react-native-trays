@@ -1,24 +1,36 @@
-import React, { useMemo, useEffect } from "react";
+import React, {
+  useMemo,
+  useEffect,
+  useRef,
+  useId,
+} from "react";
 import { useTray } from "./context";
+
+const TrayScopeContext = React.createContext<string | null>(null);
+
+export const useTrayScope = () => {
+  return React.useContext(TrayScopeContext);
+};
 
 type TrayRootProps = {
   children: React.ReactNode;
 };
 
-export const TrayRoot: React.FC<TrayRootProps> = ({ children }) => {
-  const {
-    index,
-    setContent,
-    setFooter,
-    setTotal,
-  } = useTray();
+export const TrayRoot: React.FC<TrayRootProps> = ({
+  children,
+}) => {
+  const { registerTray } = useTray();
 
+  const reactId = useId();
 
-
-  const { outside, contents, footer } = useMemo(() => {
+  const trayId = useMemo(
+    () => `tray-${reactId}`,
+    [reactId]
+  );
+  const parsed = useMemo(() => {
     const outsideNodes: React.ReactNode[] = [];
-    const contentNodes: React.ReactNode[] = [];
-    let footerNode: React.ReactNode = null;
+    const contentFactories: (() => React.ReactNode)[] = [];
+    let footerFactory: (() => React.ReactNode) | undefined;
 
     React.Children.forEach(children, (child) => {
       if (!React.isValidElement(child)) {
@@ -29,12 +41,12 @@ export const TrayRoot: React.FC<TrayRootProps> = ({ children }) => {
       const name = (child.type as any)?.displayName;
 
       if (name === "TrayContent") {
-        contentNodes.push(child);
+        contentFactories.push(() => child);
         return;
       }
 
       if (name === "TrayFooter") {
-        footerNode = child;
+        footerFactory = () => child;
         return;
       }
 
@@ -43,28 +55,23 @@ export const TrayRoot: React.FC<TrayRootProps> = ({ children }) => {
 
     return {
       outside: outsideNodes,
-      contents: contentNodes,
-      footer: footerNode,
+      contents: contentFactories,
+      footer: footerFactory,
     };
   }, [children]);
 
-
-
   useEffect(() => {
-    setTotal(contents.length);
-  }, [contents.length, setTotal]);
+    registerTray(trayId, {
+      contents: parsed.contents,
+      footer: parsed.footer,
+    });
+  }, [trayId, parsed.contents, parsed.footer, registerTray]);
 
-
-  useEffect(() => {
-    setContent(contents[index] ?? null);
-  }, [index, contents, setContent]);
-
-
-  useEffect(() => {
-    setFooter(footer ?? null);
-  }, [footer, setFooter]);
-
-  return <>{outside}</>;
+  return (
+    <TrayScopeContext.Provider value={trayId}>
+      {parsed.outside}
+    </TrayScopeContext.Provider>
+  );
 };
 
 TrayRoot.displayName = "TrayRoot";

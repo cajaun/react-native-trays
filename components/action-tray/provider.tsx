@@ -1,69 +1,119 @@
-import React, { useMemo, useRef, useState, useCallback } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import {
   ActionTray,
   ActionTrayRef,
 } from "@/components/action-tray/action-tray";
-import { TrayContext } from "./context";
+import { TrayContext, TrayDefinition } from "./context";
 
-type Props = {
+export const TrayProvider: React.FC<{
   children: React.ReactNode;
-};
-
-export const TrayProvider: React.FC<Props> = ({ children }) => {
+}> = ({ children }) => {
   const trayRef = useRef<ActionTrayRef>(null);
+  const focusableRef =
+    useRef<React.RefObject<any> | null>(null);
 
-  const [content, setContent] = useState<React.ReactNode>(null);
-  const [footer, setFooter] = useState<React.ReactNode>(null);
-  const [header, setHeader] = useState<React.ReactNode>(null);
+  const [registry, setRegistry] =
+    useState<Record<string, TrayDefinition>>(
+      {},
+    );
+
+  const [activeTrayId, setActiveTrayId] =
+    useState<string | null>(null);
 
   const [index, setIndex] = useState(0);
-  const [total, setTotal] = useState(0);
 
-  const open = useCallback(() => {
+  const registerTray = useCallback(
+    (id: string, def: TrayDefinition) => {
+      setRegistry((prev) => {
+        if (prev[id] === def) return prev;
+        return { ...prev, [id]: def };
+      });
+    },
+    [],
+  );
+
+  const registerFocusable = useCallback(
+    (ref: React.RefObject<any>) => {
+      focusableRef.current = ref;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!activeTrayId) return;
+    focusableRef.current?.current?.focus?.();
+  }, [index, activeTrayId]);
+
+  const openTray = useCallback((id: string) => {
     trayRef.current?.open();
+    setIndex(0);
+    setActiveTrayId(id);
   }, []);
 
   const close = useCallback(() => {
     trayRef.current?.close();
   }, []);
 
+  const activeTray = activeTrayId
+    ? registry[activeTrayId]
+    : undefined;
+
+  const total = activeTray?.contents.length ?? 0;
+
   const next = useCallback(() => {
-    setIndex((i) => Math.min(i + 1, total - 1));
+    setIndex((i) =>
+      Math.min(i + 1, total - 1),
+    );
   }, [total]);
 
   const back = useCallback(() => {
     setIndex((i) => Math.max(i - 1, 0));
   }, []);
 
-  const isOpen = useCallback(() => {
-    return trayRef.current?.isActive?.() ?? false;
-  }, []);
+  const rawContent =
+    activeTray?.contents[index]?.() ?? null;
 
-const builtContent = useMemo(
-  () => (
-    <React.Fragment key={`tray-step-${index}`}>
-      {header}
-      {content}
-    </React.Fragment>
-  ),
-  [header, content, index],
-);
+  const content = useMemo(() => {
+    if (!rawContent) return null;
+
+    return (
+      <React.Fragment
+        key={`tray-step-${index}`}
+      >
+        {rawContent}
+      </React.Fragment>
+    );
+  }, [rawContent, index]);
+
+  const footer =
+    activeTray?.footer?.() ?? null;
 
   const ctxValue = useMemo(
     () => ({
-      open,
+      openTray,
       close,
       next,
       back,
       index,
       total,
-      setContent,
-      setFooter,
-      setHeader,
-      isOpen,
-      setTotal,
+      registerTray,
+      registerFocusable,
     }),
-    [open, close, next, back, index, total, isOpen],
+    [
+      openTray,
+      close,
+      next,
+      back,
+      index,
+      total,
+      registerTray,
+    ],
   );
 
   return (
@@ -72,8 +122,8 @@ const builtContent = useMemo(
 
       <ActionTray
         ref={trayRef}
-        content={builtContent}
-        footer={footer ?? undefined}
+        content={content}
+        footer={footer}
         onClose={close}
       />
     </TrayContext.Provider>

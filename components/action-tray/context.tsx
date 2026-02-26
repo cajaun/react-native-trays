@@ -1,18 +1,19 @@
 import React, { createContext, useContext } from "react";
 
+export type TrayDefinition = {
+  contents: (() => React.ReactNode)[];
+  footer?: () => React.ReactNode;
+};
+
 export type TrayContextValue = {
-  open: () => void;
+  openTray: (id: string) => void;
   close: () => void;
   next: () => void;
   back: () => void;
   index: number;
   total: number;
-  setTotal: (n: number) => void;
-  setContent: (node: React.ReactNode) => void;
-  setFooter: (node: React.ReactNode) => void;
-  setHeader: (node: React.ReactNode) => void;
-
-  isOpen: () => boolean;
+  registerTray: (id: string, def: TrayDefinition) => void;
+  registerFocusable: (ref: React.RefObject<any>) => void;
 };
 
 const TrayContext = createContext<TrayContextValue | null>(null);

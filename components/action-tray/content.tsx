@@ -93,7 +93,6 @@ export const TrayContent: React.FC<Props> = ({
 }) => {
   return (
     <Animated.View
-      key={transitionKey ?? "tray-content"}
       entering={createMorphEntering(scale)}
       exiting={createMorphExiting(scale)}
     >
